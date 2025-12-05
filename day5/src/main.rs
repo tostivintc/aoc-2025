@@ -17,7 +17,8 @@ fn main() -> io::Result<()> {
         panic!("couldn't read {}: {}", file_path, why)
     }
 
-    println!("Result step 1: {}", count_fresh_ingredients(&buffer));
+    let (step1, step2) = count_fresh_ingredients(&buffer);
+    println!("Result: step 1:{step1}, step 2:{step2}",);
 
     Ok(())
 }
@@ -51,7 +52,26 @@ fn is_ingredient_fresh(ingredient: &str, ranges: &Vec<(usize, usize)>) -> bool {
     false
 }
 
-pub fn count_fresh_ingredients(list: &str) -> usize {
+fn optimize_ranges(ranges: &mut Vec<(usize, usize)>) {
+    ranges.sort();
+
+    let mut i = 0;
+    while i < ranges.len() - 1 {
+        let stop = ranges[i].1;
+        let start_next = ranges[i + 1].0;
+
+        if stop >= start_next - 1 {
+            if stop < ranges[i + 1].1 {
+                ranges[i].1 = ranges[i + 1].1;
+            }
+            ranges.remove(i + 1);
+        } else {
+            i += 1;
+        }
+    }
+}
+
+pub fn count_fresh_ingredients(list: &str) -> (usize, usize) {
     let mut count = 0_usize;
     let mut range_done = false;
     let mut ranges: Vec<(usize, usize)> = Vec::new();
@@ -60,7 +80,10 @@ pub fn count_fresh_ingredients(list: &str) -> usize {
         if !range_done {
             match get_fresh_ranges_from_line(line) {
                 Some(range) => ranges.push(range),
-                None => range_done = true,
+                None => {
+                    range_done = true;
+                    optimize_ranges(&mut ranges);
+                }
             }
         } else if is_ingredient_fresh(line, &ranges) {
             eprintln!("Fresh ingredient found: {}", line);
@@ -68,7 +91,14 @@ pub fn count_fresh_ingredients(list: &str) -> usize {
         }
     }
 
-    count
+    // Count number a fresh ingredient IDs
+    let mut fresh_id = 0_usize;
+    eprintln!("Fresh ranges: {:#?}", ranges);
+    for range in ranges {
+        fresh_id += range.1 - range.0 + 1;
+    }
+
+    (count, fresh_id)
 }
 
 #[cfg(test)]
@@ -91,7 +121,28 @@ mod tests {
             32",
         );
 
-        let result = count_fresh_ingredients(&input);
-        assert_eq!(result, 3);
+        let (n_fresh, n_fresh_id) = count_fresh_ingredients(&input);
+        assert_eq!(n_fresh, 3);
+        assert_eq!(n_fresh_id, 14);
+    }
+
+    #[test]
+    fn extended() {
+        let input = String::from(
+            "3-5\n\
+            10-20\n\
+            16-18\n\
+            \n\
+            1\n\
+            5\n\
+            8\n\
+            11\n\
+            17\n\
+            32",
+        );
+
+        let (n_fresh, n_fresh_id) = count_fresh_ingredients(&input);
+        assert_eq!(n_fresh, 3);
+        assert_eq!(n_fresh_id, 14);
     }
 }
