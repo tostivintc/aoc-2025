@@ -16,10 +16,10 @@ fn main() -> io::Result<()> {
 
     match f.read_to_string(&mut buffer) {
         Err(why) => panic!("couldn't read {}: {}", file_path, why),
-        Ok(_) => print!("{} contains:\n{}", file_path, buffer),
+        Ok(_) => (), //print!("{} contains:\n{}", file_path, buffer),
     }
 
-    println!("Result step 1: {}", get_accessible_rolls_number(&buffer));
+    //println!("Result step 1: {}", get_accessible_rolls_number(&buffer));
 
     println!(
         "Result step 2: {}",
@@ -39,7 +39,7 @@ pub fn get_accessible_rolls_number_loop(map: &str) -> usize {
         if round_result == 0 {
             break;
         }
-        eprintln!("Round result: {}", round_result);
+        //eprintln!("Round result: {}", round_result);
         result += round_result;
     }
 
@@ -50,7 +50,7 @@ pub fn get_accessible_rolls_number(map: &str) -> usize {
     let lines: Vec<&str> = map.lines().collect();
     let mut map_chars: Vec<Vec<char>> = lines.iter().map(|line| line.chars().collect()).collect();
 
-    eprintln!("Chars map: {map_chars:?}");
+    //eprintln!("Chars map: {map_chars:?}");
 
     get_accessible_rolls_number_vec(&mut map_chars)
 }
