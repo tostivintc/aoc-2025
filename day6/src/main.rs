@@ -17,8 +17,8 @@ fn main() -> io::Result<()> {
         panic!("couldn't read {}: {}", file_path, why)
     }
 
-    let step1 = get_grand_total(&buffer);
-    println!("Result: step 1:{step1}",);
+    println!("Result: step 1:{}", get_grand_total(&buffer));
+    println!("Result: step 2:{}", get_grand_total_2(&buffer));
 
     Ok(())
 }
@@ -45,6 +45,7 @@ fn compute(numbers: &Vec<Vec<i32>>, operators: Vec<char>) -> i64 {
     }
     result
 }
+
 pub fn get_grand_total(buffer: &str) -> i64 {
     let mut numbers: Vec<Vec<i32>> = Vec::new();
     let mut operators: Vec<char> = Vec::new();
@@ -72,6 +73,64 @@ pub fn get_grand_total(buffer: &str) -> i64 {
     compute(&numbers, operators.clone())
 }
 
+pub fn get_grand_total_2(buffer: &str) -> i64 {
+    let mut numbers: Vec<i32> = Vec::new();
+    let mut operators: Vec<char> = Vec::new();
+
+    for line in buffer.lines() {
+        if !line.starts_with(&['*', '+']) {
+            let mut i = 0;
+            for digit in line.chars().rev() {
+                if numbers.len() <= i {
+                    numbers.push(0_i32);
+                }
+
+                if digit != ' ' {
+                    numbers[i] *= 10;
+                    numbers[i] += digit.to_digit(10).unwrap() as i32;
+                }
+                i += 1;
+            }
+        } else {
+            let parts = line.split_whitespace().collect::<Vec<&str>>();
+            for nums in parts.iter().rev() {
+                operators.push(nums.chars().next().unwrap());
+            }
+        }
+    }
+
+    eprintln!("Numbers: {:?}", numbers);
+    eprintln!("Operators: {:?}", operators);
+
+    let mut j = 0;
+    let mut result = 0_i64;
+    for op in operators {
+        result += match op {
+            '+' => {
+                let mut sub_result = 0_i64;
+                while j < numbers.len() && numbers[j] != 0 {
+                    sub_result += numbers[j] as i64;
+                    j += 1;
+                }
+                sub_result
+            }
+            '*' => {
+                let mut sub_result = 1_i64;
+                while j < numbers.len() && numbers[j] != 0 {
+                    sub_result *= numbers[j] as i64;
+                    j += 1;
+                }
+                sub_result
+            }
+            _ => panic!("Unknown operator"),
+        };
+
+        j += 1;
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -87,5 +146,18 @@ mod tests {
 
         let step1 = get_grand_total(&input);
         assert_eq!(step1, 4277556);
+    }
+
+    #[test]
+    fn aoc_example_step2() {
+        let input = String::from(
+            "123 328  51 64 \n\
+            45 64  387 23 \n\
+            6 98  215 314\n\
+            *   +   *   + \n",
+        );
+
+        let step1 = get_grand_total_2(&input);
+        assert_eq!(step1, 3263827);
     }
 }
