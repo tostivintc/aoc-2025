@@ -33,6 +33,7 @@ fn main() -> io::Result<()> {
         "Result: step 1:{}",
         get_size_of_largest_circuit(&buffer, 3, 1000)
     );
+    println!("Result: step 2:{}", get_last_link(&buffer));
 
     Ok(())
 }
@@ -69,63 +70,72 @@ fn get_boxes_distances(boxes: &[Box]) -> Vec<Distance> {
     distances
 }
 
-fn get_circuit(distance: Vec<Distance>, max: usize) -> Vec<Vec<usize>> {
-    let mut circuit: Vec<Vec<usize>> = Vec::new();
-    let mut count: usize = 0;
+fn add_link(circuit: &mut Vec<Vec<usize>>, d: &Distance) {
+    let mut a_circuit = None;
+    let mut b_circuit = None;
 
-    for d in distance.iter() {
-        let mut a_circuit = None;
-        let mut b_circuit = None;
-
-        for (c_i, c) in circuit.iter().enumerate() {
-            if c.contains(&d.a) {
-                a_circuit = Some(c_i);
-            }
-            if c.contains(&d.b) {
-                b_circuit = Some(c_i);
-            }
-            if a_circuit.is_some() && b_circuit.is_some() {
-                break;
-            }
+    for (c_i, c) in circuit.iter().enumerate() {
+        if c.contains(&d.a) {
+            a_circuit = Some(c_i);
         }
-
-        if a_circuit.is_none() && b_circuit.is_none() {
-            circuit.push(vec![d.a, d.b]);
-            count += 1;
-        } else if a_circuit.is_some() && b_circuit.is_some() {
-            let ac = a_circuit.unwrap();
-            let bc = b_circuit.unwrap();
-
-            if ac != bc {
-                let mut to_append = circuit[bc].clone();
-                circuit[ac].append(&mut to_append);
-                circuit.remove(bc);
-                count += 1;
-            } else {
-                eprintln!(
-                    "Linked ignoed as boxes {} and {} are already in the same circuit {}",
-                    d.a, d.b, ac
-                );
-                count += 1;
-            }
-        } else if let Some(ac) = a_circuit {
-            circuit[ac].push(d.b);
-            count += 1;
-        } else {
-            let bc = b_circuit.unwrap();
-            circuit[bc].push(d.a);
-            count += 1;
+        if c.contains(&d.b) {
+            b_circuit = Some(c_i);
         }
-        eprintln!("Current circuit {count}: {:?}", circuit);
-        if count >= max {
+        if a_circuit.is_some() && b_circuit.is_some() {
             break;
         }
+    }
+
+    if a_circuit.is_none() && b_circuit.is_none() {
+        circuit.push(vec![d.a, d.b]);
+    } else if a_circuit.is_some() && b_circuit.is_some() {
+        let ac = a_circuit.unwrap();
+        let bc = b_circuit.unwrap();
+
+        if ac != bc {
+            let mut to_append = circuit[bc].clone();
+            circuit[ac].append(&mut to_append);
+            circuit.remove(bc);
+        } else {
+            eprintln!(
+                "Linked ignoed as boxes {} and {} are already in the same circuit {}",
+                d.a, d.b, ac
+            );
+        }
+    } else if let Some(ac) = a_circuit {
+        circuit[ac].push(d.b);
+    } else {
+        let bc = b_circuit.unwrap();
+        circuit[bc].push(d.a);
+    }
+    eprintln!("Current circuit: {:?}", circuit);
+}
+
+fn get_circuit(distance: Vec<Distance>, max: usize) -> Vec<Vec<usize>> {
+    let mut circuit: Vec<Vec<usize>> = Vec::new();
+
+    for d in distance.iter().take(max) {
+        add_link(&mut circuit, d);
     }
 
     circuit
 }
 
-pub fn get_size_of_largest_circuit(buffer: &str, count: usize, n_link: usize) -> usize {
+fn get_single_circuit(distance: Vec<Distance>, max: usize) -> (usize, usize) {
+    let mut circuit: Vec<Vec<usize>> = Vec::new();
+
+    for d in distance.iter() {
+        add_link(&mut circuit, d);
+        if circuit.len() == 1 && circuit[0].len() == max {
+            eprintln!("Single circuit found!");
+            return (d.a, d.b);
+        }
+    }
+
+    panic!("No single circuit found");
+}
+
+fn get_boxes_from_string(buffer: &str) -> Vec<Box> {
     let mut boxes: Vec<Box> = Vec::new();
 
     for line in buffer.lines() {
@@ -140,6 +150,12 @@ pub fn get_size_of_largest_circuit(buffer: &str, count: usize, n_link: usize) ->
         });
     }
 
+    boxes
+}
+
+pub fn get_size_of_largest_circuit(buffer: &str, count: usize, n_link: usize) -> usize {
+    let boxes = get_boxes_from_string(buffer);
+
     let distances = get_boxes_distances(&boxes);
 
     let mut circuit = get_circuit(distances, n_link);
@@ -152,6 +168,16 @@ pub fn get_size_of_largest_circuit(buffer: &str, count: usize, n_link: usize) ->
     }
 
     result
+}
+
+pub fn get_last_link(buffer: &str) -> i64 {
+    let boxes = get_boxes_from_string(buffer);
+
+    let distances = get_boxes_distances(&boxes);
+
+    let (a, b) = get_single_circuit(distances, boxes.len());
+
+    boxes[a].x * boxes[b].x
 }
 
 #[cfg(test)]
@@ -185,5 +211,34 @@ mod tests {
 
         let step1 = get_size_of_largest_circuit(&input, 3, 10);
         assert_eq!(step1, 40);
+    }
+
+    #[test]
+    fn aoc_example_step2() {
+        let input = String::from(
+            "162,817,812\n\
+            57,618,57\n\
+            906,360,560\n\
+            592,479,940\n\
+            352,342,300\n\
+            466,668,158\n\
+            542,29,236\n\
+            431,825,988\n\
+            739,650,466\n\
+            52,470,668\n\
+            216,146,977\n\
+            819,987,18\n\
+            117,168,530\n\
+            805,96,715\n\
+            346,949,466\n\
+            970,615,88\n\
+            941,993,340\n\
+            862,61,35\n\
+            984,92,344\n\
+            425,690,689",
+        );
+
+        let step2 = get_last_link(&input);
+        assert_eq!(step2, 25272);
     }
 }
